@@ -52,7 +52,7 @@ class Artist(models.Model):
 
 class Chart(models.Model):
     country = models.ForeignKey(Country, on_delete=models.CASCADE, related_name='charts')
-
+    
     class Meta:
         unique_together = ['country']
 

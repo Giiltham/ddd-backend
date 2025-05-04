@@ -13,6 +13,7 @@ from .services import (
     ChartRetrievalService, ExportAnalysisService
 )
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
+from django_filters.rest_framework import DjangoFilterBackend
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -108,6 +109,8 @@ class CountryViewSet(viewsets.ModelViewSet):
 
 class ChartViewSet(viewsets.ModelViewSet):
     queryset = Chart.objects.all()
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['country']
     serializer_class = ChartSerializer
 
     @action(detail=False, methods=['get'], url_path='country/(?P<country_iso2>[^/.]+)')
@@ -115,6 +118,15 @@ class ChartViewSet(viewsets.ModelViewSet):
         try:
             charts = ChartRetrievalService.get_charts_by_country(country_iso2)
             return Response(ChartSerializer(charts, many=True).data)
+        except ValidationError as e:
+            return Response({'error': e}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'], url_path='countries')
+    def countries(self, request, country_iso2=None):
+        try:
+            countries = ChartRetrievalService.get_charts_countries()
+            countries = [country["country"] for country in countries]
+            return Response({'countries': countries}, status=status.HTTP_200_OK)
         except ValidationError as e:
             return Response({'error': e}, status=status.HTTP_400_BAD_REQUEST)
 

@@ -107,6 +107,10 @@ class AuthenticationService:
 
 class ChartRetrievalService:
     @staticmethod
+    def get_charts_countries():
+        return Chart.objects.values('country').distinct()
+    
+    @staticmethod
     def get_charts_by_country(country_iso2):
         try:
             country = Country.objects.get(iso2=country_iso2)
