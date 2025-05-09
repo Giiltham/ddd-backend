@@ -1,52 +1,45 @@
 from django.forms import ValidationError
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import BasePermission, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+
+from chartflow.permissions import ArtistViewPermissions, ChartEntryViewPermissions, ChartViewPermissions, CountryClusterViewPermissions, CountryViewPermissions, UserViewPermissions
 from .models import User, Artist, Country, Chart, ChartEntry, CountryCluster
 from .serializers import (
     UserSerializer, ArtistSerializer, CountrySerializer, 
     ChartSerializer, ChartEntrySerializer, CountryClusterSerializer
 )
 from .services import (
-    UserManagementService, RoleManagementService, AuthenticationService,
+    AuthenticationService,
     ChartRetrievalService, ExportAnalysisService
 )
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from django_filters.rest_framework import DjangoFilterBackend
 
+
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = (IsAuthenticated, IsAdminUser|UserViewPermissions)
 
-    def create(self, request, *args, **kwargs):
-        try:
-            user = UserManagementService.create_user(
-                email=request.data.get('email'),
-                password=request.data.get('password'),
-                username=request.data.get('username'),
-                role=request.data.get('role'),
-                artist_id=request.data.get('artist_id'),
-            )
-            return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
-        except ValidationError as e:
-            return Response({'error': e}, status=status.HTTP_400_BAD_REQUEST)
 
-    def update(self, request, *args, **kwargs):
-        try:
-            user = UserManagementService.update_user(
-                user_id=self.get_object().id,
-                email=request.data.get('email'),
-                username=request.data.get('username'),
-                role=request.data.get('role'),
-                nationality_iso2=request.data.get('nationality_iso2'),
-                manager_id=request.data.get('manager_id')
-            )
-            return Response(UserSerializer(user).data)
-        except ValidationError as e:
-            return Response({'error': e}, status=status.HTTP_400_BAD_REQUEST)
+    # def update(self, request, *args, **kwargs):
+    #     try:
+    #         user = UserManagementService.update_user(
+    #             user_id=self.get_object().id,
+    #             email=request.data.get('email'),
+    #             username=request.data.get('username'),
+    #             role=request.data.get('role'),
+    #             nationality_iso2=request.data.get('nationality_iso2'),
+    #             manager_id=request.data.get('manager_id')
+    #         )
+    #         return Response(UserSerializer(user).data)
+    #     except ValidationError as e:
+    #         return Response({'error': e}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=())
     def logout(self, request):
         try:
             refresh_token = request.data["refresh"]
@@ -58,7 +51,7 @@ class UserViewSet(viewsets.ModelViewSet):
         except TokenError:
             return Response({"error": "Invalid or expired token"}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=())
     def authenticate(self, request):
         try:
             data = AuthenticationService.authenticate(
@@ -76,23 +69,17 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response(user.data)
         except ValidationError as e:
             return Response({'error': e}, status=status.HTTP_400_BAD_REQUEST)
-    
 
-    @action(detail=True, methods=['post'])
-    def assign_role(self, request, pk=None):
-        try:
-            user = RoleManagementService.assign_role(
-                user_id=pk,
-                role=request.data.get('role')
-            )
-            return Response(UserSerializer(user).data)
-        except ValidationError as e:
-            return Response({'error': e}, status=status.HTTP_400_BAD_REQUEST)
 
 class ArtistViewSet(viewsets.ModelViewSet):
     queryset = Artist.objects.all()
     serializer_class = ArtistSerializer
-
+    permission_classes = (IsAuthenticated, IsAdminUser|ArtistViewPermissions)
+    
+    @action(detail=False, methods=["get"])
+    def nationalities(self,request):
+        return Response(Artist.objects.all().values_list("nationality", flat=True).distinct())
+        
     @action(detail=False, methods=["get"])
     def me(self,request):
         try:
@@ -103,15 +90,19 @@ class ArtistViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response({'error': "No artist profile found"}, status=status.HTTP_404_NOT_FOUND)
 
+
+
 class CountryViewSet(viewsets.ModelViewSet):
     queryset = Country.objects.all()
     serializer_class = CountrySerializer
+    permission_classes = (IsAuthenticated, IsAdminUser|CountryViewPermissions)
 
 class ChartViewSet(viewsets.ModelViewSet):
     queryset = Chart.objects.all()
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country']
     serializer_class = ChartSerializer
+    permission_classes = (IsAuthenticated, IsAdminUser|ChartViewPermissions)
 
     @action(detail=False, methods=['get'], url_path='country/(?P<country_iso2>[^/.]+)')
     def by_country(self, request, country_iso2=None):
@@ -130,41 +121,18 @@ class ChartViewSet(viewsets.ModelViewSet):
         except ValidationError as e:
             return Response({'error': e}, status=status.HTTP_400_BAD_REQUEST)
 
+
 class ChartEntryViewSet(viewsets.ModelViewSet):
     queryset = ChartEntry.objects.all()
     serializer_class = ChartEntrySerializer
+    permission_classes = (IsAuthenticated, IsAdminUser|ChartEntryViewPermissions)
 
-    @action(detail=False, methods=['get'], url_path='manager/(?P<manager_id>\d+)')
-    def for_manager(self, request, manager_id=None):
-        try:
-            entries = ChartRetrievalService.get_charts_for_manager(manager_id)
-            return Response(ChartEntrySerializer(entries, many=True).data)
-        except ValidationError as e:
-            return Response({'error': e}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['get'], url_path='artist/(?P<artist_id>\d+)')
-    def for_artist(self, request, artist_id=None):
-        try:
-            entries = ChartRetrievalService.get_charts_for_artist(artist_id)
-            return Response(ChartEntrySerializer(entries, many=True).data)
-        except ValidationError as e:
-            return Response({'error': e}, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=False, methods=['post'])
-    def update_entry(self, request):
-        try:
-            entry = ChartRetrievalService.update_chart_entry(
-                chart_id=request.data.get('chart_id'),
-                artist_id=request.data.get('artist_id'),
-                rank=request.data.get('rank')
-            )
-            return Response(ChartEntrySerializer(entry).data)
-        except ValidationError as e:
-            return Response({'error': e}, status=status.HTTP_400_BAD_REQUEST)
 
 class CountryClusterViewSet(viewsets.ModelViewSet):
     queryset = CountryCluster.objects.all()
     serializer_class = CountryClusterSerializer
+    permission_classes = (IsAuthenticated, IsAdminUser|CountryClusterViewPermissions)
 
     @action(detail=False, methods=['get'], url_path='development/(?P<country_iso2>[^/.]+)')
     def country_development(self, request, country_iso2=None):
