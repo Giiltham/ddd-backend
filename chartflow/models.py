@@ -18,17 +18,16 @@ class User(AbstractUser):
         ('artist', 'Artist')
     ], default='artist')
 
-    # Add related_name to avoid clashes
     groups = models.ManyToManyField(
         'auth.Group',
-        related_name='chartflow_user_groups',  # Unique related_name
+        related_name='chartflow_user_groups',
         blank=True,
         help_text='The groups this user belongs to.',
         verbose_name='groups',
     )
     user_permissions = models.ManyToManyField(
         'auth.Permission',
-        related_name='chartflow_user_permissions',  # Unique related_name
+        related_name='chartflow_user_permissions', 
         blank=True,
         help_text='Specific permissions for this user.',
         verbose_name='user permissions',

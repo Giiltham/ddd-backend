@@ -4,7 +4,7 @@ import pandas as pd
 from chartflow.models import Artist, Chart, ChartEntry, Country, CountryCluster
 
 class Command(BaseCommand):
-    help = "Closes the specified poll for voting"
+    help = "Load initial data"
     datasets_root = "datasets/"
 
     def load_dataset(self, dataset) -> pd.DataFrame | None:

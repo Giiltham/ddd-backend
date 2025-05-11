@@ -1,3 +1,4 @@
+from os import defpath
 from django.db.models import query
 from rest_framework import serializers
 from rest_framework.fields import IntegerField
@@ -9,14 +10,29 @@ class CountrySerializer(serializers.ModelSerializer):
         fields = ['iso2', 'internet_users', 'population']
 
 class ArtistSerializer(serializers.ModelSerializer):
+    manager_name = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = Artist
-        depth = 1  
+        fields = ['id', 'user', 'name', 'manager', 'manager_name', 'nationality']
+        extra_kwargs = {
+            'user': {'write_only': True},
+            'manager': {'write_only': True},
+        }
+    
+    def get_manager_name(self, obj):
+        if obj.manager:
+            return obj.manager.username
+        return None
+
+class AdminArtistSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Artist
         fields = ['id', 'user', 'name', 'manager', 'nationality']
+        depth = 1
 
 class UserSerializer(serializers.ModelSerializer):
     artist_id = IntegerField(write_only=True, required=False)
-    artist_profile = ArtistSerializer(read_only=True)   
+    artist_profile = ArtistSerializer(read_only=True)
     class Meta:
         model = User
         depth = 1
@@ -74,11 +90,15 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class ChartEntrySerializer(serializers.ModelSerializer):
-    artist = ArtistSerializer()
-
+    artist = ArtistSerializer(read_only=True)
+    country = serializers.SerializerMethodField(read_only=True)
+    
     class Meta:
         model = ChartEntry
-        fields = ['id', 'artist', 'rank']
+        fields = ['id', 'artist', 'rank', 'country']
+
+    def get_country(self, obj):
+        return getattr(getattr(obj.chart, 'country', None), 'iso2', None)
 
 class ChartSerializer(serializers.ModelSerializer):
     country = CountrySerializer()

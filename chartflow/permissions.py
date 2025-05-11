@@ -15,22 +15,20 @@ class UserViewPermissions(BasePermission):
 
 class ArtistViewPermissions(BasePermission):
     def has_permission(self, request, view):
-        if view.action in ["retrieve", "partial_update"]:
+        if view.action in ["retrieve", "partial_update", "performance", "nationalities", "list"]:
             return True
         
         return False
         
     def has_object_permission(self, request, view, obj):
-        if view.action == "retrieve":
+        if view.action in ["retrieve", "performance"]:
             if request.user.role == "artist":
                 return obj == request.user.artist_profile
             elif request.user.role == "manager":
-                return obj in request.user.artists
-                # TODO: Vérifier s'il faut faire .all()
+                return obj in request.user.managed_artists.all()
         elif view.action == "partial_update":
             if request.user.role == "artist":
                 return obj == request.user.artist_profile
-        
         return False
 
 class CountryViewPermissions(BasePermission):
