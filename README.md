@@ -15,7 +15,7 @@ pip install -r requirements.txt
 python manage.py runserver
 ```
 
-### Chargement des données
+### Connexion au site web
 Les données sont préchargés dans une base de données sqlite.
 
 Il existe trois niveaux de compte utilisateur avec lesquels se connecter, le mot de passe est toujours `password`.
@@ -37,6 +37,13 @@ Un manager peut avoir jusqu'a 10 artistes. Pour se connecter au compte artiste, 
 Exemple d'utilisation :
 - artist.1.1@gmail.com = Manager 1, artiste 1
 - artist.34.7@gmail.com = Manager 34, artiste 7
+
+### Charger les données
+S'il s'avérais que les données de la base de données sqlite soient corrompues, vous pouvez recharger les données en executant deux commandes.
+- Charger les données des charts et artistes : `python manage.py loaddata` 
+- Générer les comptes utilisateur admin, manager et artiste : `python manage.py createusers` 
+
+Ces scripts sont stockés dans `chartflow/management/commands`
 
 ## CRUD permissions
 
